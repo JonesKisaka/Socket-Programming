@@ -1,0 +1,8 @@
+# Binaries from the build process
+*.out
+*.o
+*.bin
+*.elf
+*.exe
+*.a
+*.vscode
