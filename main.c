@@ -2,6 +2,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <string.h>
+#include <unistd.h>
 
 #define SERVER_IP "142.251.163.100" /* IP address of the server */ // This is google's ip
 int main() {
@@ -19,8 +21,24 @@ int main() {
     int result = connect(socketFD, (struct sockaddr *)&address, sizeof(address));
 
     if (result == 0){
-        printf("Connected to the server\n");
+        printf("Connected to google server\n");
     }else {
         printf("Failed to connect to the server\n");
     }
+
+    char *message = "GET / HTTP/1.1\r\nHost:google.com\r\n\r\n";
+    send(socketFD, message, strlen(message), 0);
+
+    char buffer[1024];
+    int ret = recv(socketFD, buffer, sizeof(buffer), 0);
+
+     if (ret > 0) {
+        buffer[ret] = '\0';  // Null-terminate the received data so that it is printed as a string
+        printf("Received Response: %s\n", buffer);
+    } else {
+        printf("Failed to receive response\n");
+    }
+
+    close(socketFD);
+
 }
