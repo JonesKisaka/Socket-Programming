@@ -43,4 +43,39 @@ int main(int argc, char *argv[]) {
         error("Error on binding.");
     }
 
+    listen(sockfd, 5); //listen for incoming connections, backlog of 5
+    client_len = sizeof(client_addr);
+
+    newsockfd = accept(sockfd, (struct sockaddr *) &client_addr, &client_len); //accept incoming connection
+    if (newsockfd < 0) {
+        error("Error on accept.");
+    }
+
+    while(1) {
+        bzero(buffer, 255); //clear the buffer
+        n = read(newsockfd, buffer, 255); //read data from the client
+        if (n < 0) {
+            error("Error reading from socket.");
+        }
+        printf("Client message: %s\n", buffer); //print the received message
+        bzero(buffer, 255); //clear the buffer for the response
+        fgets(buffer, 255, stdin); //get input from the server user
+
+        // Echo the message back to the client
+        n = write(newsockfd, buffer, strlen(buffer)); //send data back to the client
+        if (n < 0) {
+            error("Error writing to socket.");
+        }
+        bzero(buffer, 255); //clear the buffer for the next message
+
+        int i = strncmp("exit", buffer, 4); //check if the server user wants to exit
+        if (i == 0) {
+            printf("Server exiting...\n");
+            break; //exit the loop and close the server
+        }
+    }
+
+    close(newsockfd); //close the client socket
+    close(sockfd); //close the server socket
+    return 0; //exit the program successfully
 }
