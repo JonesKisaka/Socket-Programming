@@ -57,6 +57,13 @@ int main(int argc, char *argv[]) {
         if (n < 0) {
             error("Error reading from socket.");
         }
+
+        int i = strncmp("exit", buffer, 4); //check if the client user wants to exit
+        if (i == 0) {
+            printf("Client has exited. Issa wrap...\n");
+            break; //exit the loop and close the client
+        }
+
         printf("Client message: %s\n", buffer); //print the received message
         bzero(buffer, 255); //clear the buffer for the response
         fgets(buffer, 255, stdin); //get input from the server user
@@ -66,11 +73,10 @@ int main(int argc, char *argv[]) {
         if (n < 0) {
             error("Error writing to socket.");
         }
-        bzero(buffer, 255); //clear the buffer for the next message
 
-        int i = strncmp("exit", buffer, 4); //check if the server user wants to exit
+        i = strncmp("exit", buffer, 4);
         if (i == 0) {
-            printf("Server exiting...\n");
+            printf("Server is exiting.Issa wrap...\n");
             break; //exit the loop and close the server
         }
     }
