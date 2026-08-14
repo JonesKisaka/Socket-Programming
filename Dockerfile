@@ -5,9 +5,8 @@ WORKDIR /src
 
 COPY src/*.c ./
 
-RUN gcc -Wall -O2 server.c -o server && \
-    gcc -Wall -O2 client.c -o client
-
+RUN gcc -Wall -O2 server.c -o server.out && \
+    gcc -Wall -O2 client.c -o client.out
 
 # ---- Stage 2: Runtime ---- #
 FROM debian:bookworm-slim
