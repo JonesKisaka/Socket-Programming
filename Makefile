@@ -1,6 +1,6 @@
 PORT := 9999
-SERVER_FILENAME := ./src/server.c
-CLIENT_FILENAME := ./src/client.c
+SERVER_FILENAME := ./src/server/server.c
+CLIENT_FILENAME := ./src/client/client.c
 HOSTNAME := localhost
 
 # To start this application, start the server first before the client.
@@ -19,4 +19,21 @@ client:
 clean:
 	@echo "Clearing compiled files..."
 	rm -f ./src/*.out
-	
+
+# Docker compose commands
+
+silent: 
+	@echo "Starting server and client..."
+	sudo docker compose up -d
+
+remove: 
+	@echo "Removing containers..."
+	sudo docker compose down	
+
+client-attach:
+	@echo "Attaching to client container..."
+	sudo docker attach $(shell docker ps -qf "name=tcp-client")
+
+server-attach:
+	@echo "Attaching to server container..."
+	sudo docker attach $(shell docker ps -qf "name=tcp-server")

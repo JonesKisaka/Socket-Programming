@@ -1,0 +1,32 @@
+networks:
+  tcpnet:
+    name: tcpnet
+    driver: bridge
+
+services: 
+  tcp-server:
+    build:
+      context: ./src/server
+      dockerfile: Dockerfile
+    image: kisakathejones/tcp-server:latest
+    container_name: tcp-server
+    ports:
+      - "9999:9999"
+    networks:
+      - tcpnet
+    stdin_open: true
+    tty: true
+
+  tcp-client:
+    build:
+      context: ./src/client
+      dockerfile: Dockerfile
+    image: kisakathejones/tcp-client:latest
+    container_name: tcp-client
+    depends_on:
+      - tcp-server
+    command: ["tcp-server", "9999"]
+    networks:
+      - tcpnet
+    stdin_open: true
+    tty: true
