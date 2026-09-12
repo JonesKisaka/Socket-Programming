@@ -7,11 +7,14 @@ HTTP and MQTT.
 
 ## What's inside
 
-| File       | Description                                                                                                       |
-| ---------- | ----------------------------------------------------------------------------------------------------------------- |
-| `server.c` | A TCP **echo/chat server** that listens on a port, accepts a single client, and exchanges messages interactively. |
-| `client.c` | A TCP **client** that connects to a server by hostname and port and sends/receives messages in a loop.            |
-| `Makefile` | Convenience targets to build and run the server and client, and to clean binaries.                                |
+| Path                    | Description                                                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `src/server/server.c`   | A TCP **echo/chat server** that listens on a port, accepts a single client, and exchanges messages interactively. |
+| `src/client/client.c`   | A TCP **client** that connects to a server by hostname and port and sends/receives messages in a loop.            |
+| `src/server/Dockerfile` | Multi-stage build for the **server** image (`kisakathejones/tcp-server`).                                          |
+| `src/client/Dockerfile` | Multi-stage build for the **client** image (`kisakathejones/tcp-client`).                                          |
+| `compose.yaml`          | Docker Compose definition that builds/runs both containers on a shared `tcpnet` bridge network.                   |
+| `Makefile`              | Convenience targets to build and run the server and client natively, and to drive the Docker containers.          |
 
 ## Concepts covered
 
@@ -38,7 +41,7 @@ then the client** — each in its own terminal.
 make server
 ```
 
-This compiles `server.c` to `server.out` and runs it on the default port.
+This compiles `src/server/server.c` to `src/server.out` and runs it on the default port.
 
 ### 2. Start the client
 
@@ -48,7 +51,7 @@ In a second terminal:
 make client
 ```
 
-This compiles `client.c` to `client.out` and connects to the server.
+This compiles `src/client/client.c` to `src/client.out` and connects to the server.
 
 Once connected, the client and server take turns exchanging messages:
 
@@ -77,79 +80,76 @@ make clean
 
 ## Running with Docker
 
-The application is published as a container image on Docker Hub:
-[`kisakathejones/tcp-chat`](https://hub.docker.com/r/kisakathejones/tcp-chat).
-The image is built in two stages — it compiles `server.c` and `client.c` with `gcc`,
-then ships only the resulting `server.out` and `client.out` binaries on a slim Debian
-runtime. By default the container starts the **server** on port `9999`.
+The server and the client are packaged as **two separate images**, each built from its
+own `Dockerfile`:
 
-Both the server and the client are **interactive** (they read your replies from
-standard input), so every `docker run` below uses the `-it` flags to attach an
-interactive terminal.
+| Service      | Image                          | Dockerfile              |
+| ------------ | ------------------------------ | ----------------------- |
+| `tcp-server` | `kisakathejones/tcp-server`    | `src/server/Dockerfile` |
+| `tcp-client` | `kisakathejones/tcp-client`    | `src/client/Dockerfile` |
 
-### Pull the image
+Each image is built in two stages — it compiles its single `.c` source with `gcc`, then
+ships only the resulting binary on a slim Debian runtime. The `ENTRYPOINT` is the binary
+(`./server.out` / `./client.out`) and the `CMD` supplies the default arguments, so the
+server defaults to listening on port `9999` and the client defaults to connecting to
+host `server` on port `9999`.
 
-```bash
-docker pull kisakathejones/tcp-chat:0.2
-```
+Both containers are **interactive** (they read your replies from standard input), so the
+services are configured with `stdin_open` and `tty` enabled.
 
-### Quick start: server and client on one Docker network
+### Quick start with Docker Compose (recommended)
 
-Because the client connects to the server by hostname, the easiest setup is a
-user-defined Docker network so the containers can find each other by name.
+`compose.yaml` builds both images, attaches them to a shared `tcpnet` bridge network so
+the client can reach the server by its service name, and publishes the server's port
+`9999` to the host. Because the client connects to `tcp-server` by hostname, no manual
+network setup is needed.
 
-**1. Create a network:**
-
-```bash
-docker network create chatnet
-```
-
-**2. Start the server** (named `chat-server`, the default `CMD` runs `./server.out 9999`):
+Bring the whole stack up in the background:
 
 ```bash
-docker run -it --rm --name chat-server --network chatnet kisakathejones/tcp-chat:0.2
+make silent      # sudo docker compose up -d
 ```
 
-**3. Start the client** in a second terminal, connecting to `chat-server` on port `9999`.
-This overrides the default command to run the client binary instead:
+Then attach to each container in its own terminal to interact with it:
 
 ```bash
-docker run -it --rm --network chatnet kisakathejones/tcp-chat:0.2 ./client.out chat-server 9999
+make server-attach   # attach to the tcp-server container
+make client-attach   # attach to the tcp-client container
 ```
 
-Once connected, the two containers take turns exchanging messages. Type `exit` in
-either terminal to end the session.
+Once attached, the two containers take turns exchanging messages. Type `exit` to end
+the session.
+
+Tear everything down:
+
+```bash
+make remove      # sudo docker compose down
+```
+
+You can also drive Compose directly if you prefer:
+
+```bash
+docker compose up -d      # build and start both services
+docker attach tcp-server  # or: docker attach tcp-client
+docker compose down       # stop and remove the containers
+```
+
+### Building the images locally
+
+To build from source without Compose:
+
+```bash
+docker build -t kisakathejones/tcp-server ./src/server
+docker build -t kisakathejones/tcp-client ./src/client
+```
 
 ### Exposing the server to the host
 
-To let a client **outside Docker** (for example, the native `make client` build or a
-tool like `nc`) reach the containerized server, publish the port:
-
-```bash
-docker run -it --rm -p 9999:9999 kisakathejones/tcp-chat:0.2
-```
-
-Then connect from the host:
+Compose already publishes port `9999`, so a client **outside Docker** (for example, the
+native `make client` build or a tool like `nc`) can reach the containerized server:
 
 ```bash
 make client PORT=9999 HOSTNAME=127.0.0.1
-```
-
-### Running a different port
-
-The server takes the port as a command-line argument. Override the default command and
-map the port accordingly:
-
-```bash
-docker run -it --rm -p 8080:8080 kisakathejones/tcp-chat:0.2 ./server.out 8080
-```
-
-### Building the image locally
-
-If you want to build from source instead of pulling:
-
-```bash
-docker build -t kisakathejones/tcp-chat:0.2 .
 ```
 
 ## Notes
